@@ -15,7 +15,7 @@ jobs:
     name: Lint action definitions
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Download actionlint
         id: actionlint
         run: bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
@@ -26,7 +26,7 @@ jobs:
     name: Build a blueprint toolchain
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Install TeX / Graphviz system packages
         uses: ./blueprint-system-deps
