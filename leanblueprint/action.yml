@@ -31,5 +31,8 @@ runs:
       shell: bash
       env:
         EXTRA_PIP_PACKAGES: ${{ inputs.extra-pip-packages }}
-      # pybtex is pinned: newer releases break plastex bibliography rendering.
-      run: python3 -m pip install leanblueprint plastex 'pybtex==0.26.1' $EXTRA_PIP_PACKAGES
+      # The plasTeX family is pinned: the texra-blueprint patch layer binds to
+      # private methods of these exact releases, and newer pybtex releases
+      # break plastex bibliography rendering. Bumps are deliberate releases
+      # tested against the texra-blueprint fixture, never incidental upgrades.
+      run: python3 -m pip install 'leanblueprint==0.0.20' 'plasTeX==3.1' 'plastexdepgraph==0.0.5' 'plastexshowmore==0.0.2' 'pybtex==0.26.1' $EXTRA_PIP_PACKAGES
