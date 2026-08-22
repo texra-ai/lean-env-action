@@ -14,13 +14,21 @@ jobs:
   lint:
     name: Lint action definitions
     runs-on: ubuntu-latest
+    env:
+      ACTIONLINT_VERSION: 1.7.12
     steps:
       - uses: actions/checkout@v7
+      - name: Cache actionlint
+        id: cache-actionlint
+        uses: actions/cache@v5
+        with:
+          path: ./actionlint
+          key: actionlint-${{ env.ACTIONLINT_VERSION }}-${{ runner.os }}-${{ runner.arch }}
       - name: Download actionlint
-        id: actionlint
-        run: bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+        if: steps.cache-actionlint.outputs.cache-hit != 'true'
+        run: bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash) "$ACTIONLINT_VERSION"
       - name: Run actionlint
-        run: ${{ steps.actionlint.outputs.executable }} -color
+        run: ./actionlint -color
 
   blueprint-deps:
     name: Build a blueprint toolchain
