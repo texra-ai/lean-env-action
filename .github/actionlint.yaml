@@ -1,0 +1,8 @@
+# actionlint's job-context type predates job.workflow_sha (added by GitHub on
+# 2026-04-23; deploy-pages.yml uses it to check out its own scripts at the
+# commit the caller resolved). Drop this ignore once actionlint learns the
+# property.
+paths:
+  .github/workflows/deploy-pages.yml:
+    ignore:
+      - 'property "workflow_sha" is not defined in object type'
