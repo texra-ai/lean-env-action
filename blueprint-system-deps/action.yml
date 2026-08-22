@@ -25,8 +25,10 @@ runs:
         cache_key_segment="${VERSION_CODENAME:-${VERSION_ID:-unknown}}"
         archive_dir="$RUNNER_TEMP/blueprint-apt-archives/${{ inputs.cache-suffix }}"
 
+        # mkdir -p above guarantees the path is (or resolves to) a directory;
+        # only a symlink could still smuggle the cache elsewhere.
         mkdir -p "$archive_dir/partial"
-        if [ ! -d "$archive_dir" ] || [ -L "$archive_dir" ]; then
+        if [ -L "$archive_dir" ]; then
           echo "::error::Apt archive cache path must be a real directory: $archive_dir"
           exit 1
         fi
@@ -49,9 +51,11 @@ runs:
       run: |
         sudo apt-get update
 
+        # The prepare step validated the path; re-check only that the cache
+        # restore did not replace it with a symlink.
         apt_cache_dir="$APT_CACHE_DIR"
         mkdir -p "$apt_cache_dir/partial"
-        if [ ! -d "$apt_cache_dir" ] || [ -L "$apt_cache_dir" ]; then
+        if [ -L "$apt_cache_dir" ]; then
           echo "::error::Apt archive cache path must be a real directory: $apt_cache_dir"
           exit 1
         fi
