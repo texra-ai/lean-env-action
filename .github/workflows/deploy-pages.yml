@@ -55,11 +55,22 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           COMPONENTS: ${{ inputs.components }}
+        # The fetches are independent (distinct destination directories), so
+        # overlap them; a per-pid wait keeps any nonzero exit fatal, which a
+        # bare `wait` would swallow. The script itself exits 0 with a warning
+        # when an artifact is merely absent.
         run: |
           read -r -a components <<< "$COMPONENTS"
+          pids=()
           for name in "${components[@]}"; do
-            ./scripts/fetch-latest-artifact.sh "$name" "components/$name"
+            ./scripts/fetch-latest-artifact.sh "$name" "components/$name" &
+            pids+=("$!")
           done
+          status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          exit "$status"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
