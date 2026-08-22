@@ -8,9 +8,9 @@ This repository hosts three composite actions and one reusable workflow:
 
 | Action | Reference | What it does |
 | --- | --- | --- |
-| **Setup Lean Environment** | `texra-ai/lean-env-action@main` | Lean toolchain + Mathlib build cache. |
-| **Blueprint system deps** | `texra-ai/lean-env-action/blueprint-system-deps@main` | TeX / dvisvgm / Graphviz apt packages, with an apt archive cache. |
-| **Install leanblueprint** | `texra-ai/lean-env-action/leanblueprint@main` | Python 3.12 + the `leanblueprint` toolchain. |
+| **Setup Lean Environment** | `texra-ai/lean-env-action@v1` | Lean toolchain + Mathlib build cache. |
+| **Blueprint system deps** | `texra-ai/lean-env-action/blueprint-system-deps@v1` | TeX / dvisvgm / Graphviz apt packages, with an apt archive cache. |
+| **Install leanblueprint** | `texra-ai/lean-env-action/leanblueprint@v1` | Python 3.12 + the `leanblueprint` toolchain. |
 | **Deploy Pages** | `texra-ai/lean-env-action/.github/workflows/deploy-pages.yml@v1` | Reusable workflow: assemble site artifacts and deploy to GitHub Pages. |
 
 The actions are orthogonal and self-contained: use the one you need, or compose
@@ -25,7 +25,7 @@ Mathlib build cache.
 ```yaml
 steps:
   - uses: actions/checkout@v6
-  - uses: texra-ai/lean-env-action@main
+  - uses: texra-ai/lean-env-action@v1
   - run: lake build
 ```
 
@@ -39,8 +39,8 @@ too if you compile the blueprint):
 ```yaml
 steps:
   - uses: actions/checkout@v6
-  - uses: texra-ai/lean-env-action@main
-  - uses: texra-ai/lean-env-action/leanblueprint@main
+  - uses: texra-ai/lean-env-action@v1
+  - uses: texra-ai/lean-env-action/leanblueprint@v1
   - run: lake exe checkdecls blueprint/lean_decls
 ```
 
@@ -51,7 +51,7 @@ caching the downloaded `.deb` archives so repeat runs are fast.
 
 ```yaml
 steps:
-  - uses: texra-ai/lean-env-action/blueprint-system-deps@main
+  - uses: texra-ai/lean-env-action/blueprint-system-deps@v1
     with:
       cache-suffix: pdf-v1            # optional, distinguishes package sets
       extra-packages: texlive-science # optional, space-separated
@@ -73,17 +73,23 @@ it builds against). This is the single home for the leanblueprint install.
 
 ```yaml
 steps:
-  - uses: texra-ai/lean-env-action/leanblueprint@main
+  - uses: texra-ai/lean-env-action/leanblueprint@v1
 ```
 
 | Input | Default | Description |
 | --- | --- | --- |
+| `texra-blueprint-ref` | `v0.3.5` | Git ref of `LionSR/texra-blueprint` to install. |
 | `extra-pip-packages` | `''` | Additional pip packages, space-separated. |
 
 The whole plasTeX family (`leanblueprint`, `plasTeX`, `plastexdepgraph`,
-`plastexshowmore`, `pybtex`) is pinned to exact releases;
+`plastexshowmore`, `pybtex`) plus the `texra-blueprint` plasTeX plugin is
+pinned to exact releases;
 [`leanblueprint/action.yml`](leanblueprint/action.yml) records the versions and
-the rationale.
+the rationale. The `texra-blueprint-ref` default is the pin's single home:
+consumers do not pass it, and a texra-blueprint release bumps the default here
+and re-tags `v1`. A consumer that still installs the plugin through
+`extra-pip-packages` keeps working — pip installing the same ref twice is
+harmless.
 
 ## Compiling a blueprint
 
@@ -93,8 +99,8 @@ the Python tool:
 ```yaml
 steps:
   - uses: actions/checkout@v6
-  - uses: texra-ai/lean-env-action/blueprint-system-deps@main
-  - uses: texra-ai/lean-env-action/leanblueprint@main
+  - uses: texra-ai/lean-env-action/blueprint-system-deps@v1
+  - uses: texra-ai/lean-env-action/leanblueprint@v1
   - working-directory: blueprint
     run: |
       leanblueprint pdf
@@ -131,8 +137,11 @@ ref you pin stays self-consistent.
 
 ## Versioning
 
-The examples pin `@main`; the `v1` tag exists for reproducible CI, and a full
-commit SHA is stricter still.
+Every example pins `@v1`, the same ref real consumers use. `v1` is a moving
+major tag: each release (including a `texra-blueprint-ref` default bump) moves
+it to the newest compatible commit, so consumers pick up fixes without editing
+their workflows. Pin a full commit SHA for strict reproducibility; `@main`
+tracks unreleased development.
 
 ## License
 
