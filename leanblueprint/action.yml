@@ -10,6 +10,13 @@ description: >-
 #   - uses: texra-ai/lean-env-action/leanblueprint@<ref>
 
 inputs:
+  texra-blueprint-ref:
+    description: >-
+      Git ref of LionSR/texra-blueprint to install. This default is the pin's
+      single home: a texra-blueprint release bumps it here and re-tags v1;
+      consumers do not pass the pin themselves.
+    required: false
+    default: 'v0.3.5'
   extra-pip-packages:
     description: 'Additional pip packages to install alongside leanblueprint (space-separated).'
     required: false
@@ -20,21 +27,49 @@ runs:
   steps:
     - name: Install Graphviz headers (needed to build pygraphviz)
       shell: bash
-      run: sudo apt-get update && sudo apt-get install -y graphviz libgraphviz-dev
+      # blueprint-system-deps already installs these (from its apt archive
+      # cache); skip the whole apt round-trip when they are present so the
+      # composed case stays fast while the action remains self-contained.
+      run: |
+        if ! dpkg -s libgraphviz-dev >/dev/null 2>&1; then
+          sudo apt-get update
+          sudo apt-get install -y graphviz libgraphviz-dev
+        fi
 
     - name: Set up Python
       uses: actions/setup-python@v6
       with:
         python-version: '3.12'
 
+    # setup-python's `cache: pip` needs a dependency file inside the consumer
+    # workspace, which a composite action cannot provide, so cache the pip
+    # download/wheel cache directly. Keying on this file's hash covers every
+    # pin (pygraphviz's C build is the expensive part being saved).
+    - name: Compute pip cache key
+      id: pip-cache-key
+      shell: bash
+      run: echo "hash=$(sha256sum "$GITHUB_ACTION_PATH/action.yml" | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+    - name: Cache pip downloads
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/pip
+        key: leanblueprint-pip-${{ runner.os }}-${{ runner.arch }}-${{ steps.pip-cache-key.outputs.hash }}-${{ inputs.texra-blueprint-ref }}
+        restore-keys: |
+          leanblueprint-pip-${{ runner.os }}-${{ runner.arch }}-
+
     - name: Install leanblueprint
       shell: bash
       env:
+        TEXRA_BLUEPRINT_REF: ${{ inputs.texra-blueprint-ref }}
         EXTRA_PIP_PACKAGES: ${{ inputs.extra-pip-packages }}
       # The plasTeX family is pinned: the texra-blueprint patch layer binds to
       # private methods of these exact releases, and newer pybtex releases
       # break plastex bibliography rendering. Bumps are deliberate releases
       # tested against the texra-blueprint fixture, never incidental upgrades.
+      # A consumer that still passes the texra-blueprint pin through
+      # extra-pip-packages keeps working: pip installing the same ref twice is
+      # harmless.
       run: |
         packages=(
           'leanblueprint==0.0.20'
@@ -42,6 +77,7 @@ runs:
           'plastexdepgraph==0.0.5'
           'plastexshowmore==0.0.2'
           'pybtex==0.26.1'
+          "git+https://github.com/LionSR/texra-blueprint@${TEXRA_BLUEPRINT_REF}"
         )
         if [ -n "$EXTRA_PIP_PACKAGES" ]; then
           read -r -a extra_pip_packages <<< "$EXTRA_PIP_PACKAGES"
