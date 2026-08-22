@@ -78,7 +78,7 @@ steps:
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `texra-blueprint-ref` | `v0.3.6` | Git ref of `LionSR/texra-blueprint` to install. |
+| `texra-blueprint-ref` | `v0.3.7` | Git ref of `LionSR/texra-blueprint` to install. |
 | `extra-pip-packages` | `''` | Additional pip packages, space-separated. |
 
 The whole plasTeX family (`leanblueprint`, `plasTeX`, `plastexdepgraph`,
