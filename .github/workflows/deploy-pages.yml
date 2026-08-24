@@ -18,7 +18,13 @@ on:
   workflow_call:
     inputs:
       components:
-        description: 'Space-separated component artifact names to fetch.'
+        description: >-
+          Space-separated component artifact names to fetch. This input controls
+          fetching only: the site layout is fixed by
+          scripts/assemble-pages-site.sh, which knows the three standard
+          components (site-blueprint required, site-docs and site-badges
+          optional). Drop a name to skip fetching that component; names the
+          assembly script does not know are fetched but never enter the site.
         type: string
         default: 'site-blueprint site-docs site-badges'
 
@@ -33,20 +39,38 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
+      # job.workflow_sha is the commit this reusable workflow file was resolved
+      # from (native since 2026-04-23), so the scripts always match the workflow
+      # revision the caller pinned (v1, main, a SHA, ...) — no separately
+      # maintained ref here. actionlint does not know the property yet; see
+      # .github/actionlint.yaml.
       - name: Checkout deployment scripts
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: texra-ai/lean-env-action
-          ref: v1
+          ref: ${{ job.workflow_sha }}
           sparse-checkout: scripts
 
       - name: Fetch latest site components
         env:
           GH_TOKEN: ${{ github.token }}
+          COMPONENTS: ${{ inputs.components }}
+        # The fetches are independent (distinct destination directories), so
+        # overlap them; a per-pid wait keeps any nonzero exit fatal, which a
+        # bare `wait` would swallow. The script itself exits 0 with a warning
+        # when an artifact is merely absent.
         run: |
-          for name in ${{ inputs.components }}; do
-            ./scripts/fetch-latest-artifact.sh "$name" "components/$name"
+          read -r -a components <<< "$COMPONENTS"
+          pids=()
+          for name in "${components[@]}"; do
+            ./scripts/fetch-latest-artifact.sh "$name" "components/$name" &
+            pids+=("$!")
           done
+          status=0
+          for pid in "${pids[@]}"; do
+            wait "$pid" || status=1
+          done
+          exit "$status"
 
       - name: Configure Pages
         uses: actions/configure-pages@v5
