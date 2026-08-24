@@ -16,7 +16,7 @@ inputs:
       single home: a texra-blueprint release bumps it here and re-tags v1;
       consumers do not pass the pin themselves.
     required: false
-    default: 'v0.3.7'
+    default: 'v0.3.8'
   extra-pip-packages:
     description: 'Additional pip packages to install alongside leanblueprint (space-separated).'
     required: false
