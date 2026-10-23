@@ -31,7 +31,14 @@ runs:
           exit 1
         fi
 
-        echo "cache-key-segment=$cache_key_segment" >> "$GITHUB_OUTPUT"
+        # The month in the key makes the cache be saved again once a month, so newer package
+        # versions are downloaded once and then restored, instead of on every run.
+        key_base="blueprint-apt-${RUNNER_OS}-${RUNNER_ARCH}-${cache_key_segment}-${{ inputs.cache-suffix }}"
+        echo "key=${key_base}-$(date -u +%Y-%m)" >> "$GITHUB_OUTPUT"
+        echo "restore-keys<<EOF" >> "$GITHUB_OUTPUT"
+        echo "${key_base}-" >> "$GITHUB_OUTPUT"
+        echo "${key_base}" >> "$GITHUB_OUTPUT"
+        echo "EOF" >> "$GITHUB_OUTPUT"
         echo "archive-dir=$archive_dir" >> "$GITHUB_OUTPUT"
 
     - name: Restore blueprint apt archive cache
@@ -39,7 +46,8 @@ runs:
       uses: actions/cache/restore@v5
       with:
         path: ${{ steps.blueprint-apt-cache-path.outputs.archive-dir }}
-        key: blueprint-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.blueprint-apt-cache-path.outputs.cache-key-segment }}-${{ inputs.cache-suffix }}
+        key: ${{ steps.blueprint-apt-cache-path.outputs.key }}
+        restore-keys: ${{ steps.blueprint-apt-cache-path.outputs.restore-keys }}
 
     - name: Install blueprint system dependencies
       shell: bash
@@ -78,6 +86,8 @@ runs:
           -o Dir::Cache::archives="$apt_cache_dir" \
           "${packages[@]}"
 
+        # Drop archives of superseded package versions, so the saved cache does not grow.
+        sudo apt-get autoclean -o Dir::Cache::archives="$apt_cache_dir"
         sudo chown -R "$USER:$(id -gn)" "$apt_cache_dir"
 
     - name: Save blueprint apt archive cache

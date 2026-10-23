@@ -65,6 +65,11 @@ The base set is: `chktex`, `dvisvgm`, `graphviz`, `latexmk`, `libgraphviz-dev`,
 `texlive-extra-utils`, `texlive-fonts-recommended`, `texlive-latex-extra`,
 `texlive-pictures`, `texlive-xetex`.
 
+The downloaded archives are cached under a key that includes the current month. The first run
+of a month restores the previous month's archives, downloads only the packages updated since,
+and saves the result under the new key, so later runs download nothing. Archives of superseded
+versions are removed before saving.
+
 ## Install leanblueprint
 
 Installs Python 3.12 and the `leanblueprint` toolchain (plus the Graphviz headers
