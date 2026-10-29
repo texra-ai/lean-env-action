@@ -17,10 +17,15 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Prepare blueprint apt archive cache
+    - name: Refresh package indexes and prepare blueprint apt archive cache
       id: blueprint-apt-cache-path
       shell: bash
+      env:
+        BLUEPRINT_ACTION_PATH: ${{ github.action_path }}
+        EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
+        sudo apt-get update
+
         . /etc/os-release
         cache_key_segment="${VERSION_CODENAME:-${VERSION_ID:-unknown}}"
         archive_dir="$RUNNER_TEMP/blueprint-apt-archives/${{ inputs.cache-suffix }}"
@@ -33,13 +38,19 @@ runs:
 
         echo "cache-key-segment=$cache_key_segment" >> "$GITHUB_OUTPUT"
         echo "archive-dir=$archive_dir" >> "$GITHUB_OUTPUT"
+        package_fingerprint="$(python3 "$BLUEPRINT_ACTION_PATH/cache_fingerprint.py" \
+          /var/lib/apt/lists "$BLUEPRINT_ACTION_PATH/action.yml" "$EXTRA_PACKAGES")"
+        echo "package-fingerprint=$package_fingerprint" >> "$GITHUB_OUTPUT"
 
     - name: Restore blueprint apt archive cache
       id: blueprint-apt-cache
       uses: actions/cache/restore@v5
       with:
         path: ${{ steps.blueprint-apt-cache-path.outputs.archive-dir }}
-        key: blueprint-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.blueprint-apt-cache-path.outputs.cache-key-segment }}-${{ inputs.cache-suffix }}
+        key: blueprint-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.blueprint-apt-cache-path.outputs.cache-key-segment }}-${{ inputs.cache-suffix }}-${{ steps.blueprint-apt-cache-path.outputs.package-fingerprint }}
+        restore-keys: |
+          blueprint-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.blueprint-apt-cache-path.outputs.cache-key-segment }}-${{ inputs.cache-suffix }}-
+          blueprint-apt-${{ runner.os }}-${{ runner.arch }}-${{ steps.blueprint-apt-cache-path.outputs.cache-key-segment }}-${{ inputs.cache-suffix }}
 
     - name: Install blueprint system dependencies
       shell: bash
@@ -47,8 +58,6 @@ runs:
         APT_CACHE_DIR: ${{ steps.blueprint-apt-cache-path.outputs.archive-dir }}
         EXTRA_PACKAGES: ${{ inputs.extra-packages }}
       run: |
-        sudo apt-get update
-
         apt_cache_dir="$APT_CACHE_DIR"
         mkdir -p "$apt_cache_dir/partial"
         if [ ! -d "$apt_cache_dir" ] || [ -L "$apt_cache_dir" ]; then
