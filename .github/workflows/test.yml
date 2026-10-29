@@ -16,6 +16,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+      - name: Test apt cache generation
+        run: python3 -m unittest discover -s blueprint-system-deps -p 'test_*.py'
       - name: Download actionlint
         id: actionlint
         run: bash <(curl -sSf https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)

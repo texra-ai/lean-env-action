@@ -47,6 +47,12 @@ steps:
 
 Installs the TeX / dvisvgm / Graphviz packages needed to compile a blueprint,
 caching the downloaded `.deb` archives so repeat runs are fast.
+The action refreshes apt indexes before restoring the cache. Its immutable save
+key includes the index contents, the action's package definition and
+`extra-packages`, so updated Ubuntu packages can be saved under a fresh key.
+When that key is new, it restores the most recent archives for the same package
+set, including the earlier fixed-key cache, and downloads only missing versions.
+The archive directory stays the same across these cache generations.
 
 ```yaml
 steps:
